@@ -12,7 +12,6 @@
 #include "detector/tracker.h"
 
 #include "ros/ros.h"
-#include <depth_image_proc/depth_traits.h>
 namespace tracker {
 
 
@@ -221,7 +220,7 @@ void TrackSingleObj::ImuCallback(const sensor_msgs::ImuConstPtr &imu) {
 }
 
 void TrackSingleObj::OdometryCallback(
-    const geometry_msgs::PoseStamped::ConstPtr &odom) {
+    const nav_msgs::Odometry::ConstPtr &odom) {
   motion_compensation_->LoadOdometry(odom);
 }
 
@@ -232,101 +231,47 @@ void TrackSingleObj::ImageCallback(const sensor_msgs::Image::ConstPtr &msg) {
 }
 
 void TrackSingleObj::DepthCallback(const sensor_msgs::ImageConstPtr &msg) {
-  //ROS_INFO("DepthCallback triggered.");
-  //ConstPtr
-  
-  cv_bridge::CvImagePtr cv_depth_ptr;
-  cv_depth_ptr = cv_bridge::toCvCopy(msg, sensor_msgs::image_encodings::TYPE_32FC1);
-   cv::Mat convertedDepthImg(cv_depth_ptr->image.size(), CV_16UC1);
-  
-  const int V = cv_depth_ptr->image.size().height;
-    const int U = cv_depth_ptr->image.size().width;
+    // Handle NaN values in the depth data
+    cv_bridge::CvImagePtr cv_ptr;
+    try {
+        cv_ptr = cv_bridge::toCvCopy(msg, sensor_msgs::image_encodings::TYPE_32FC1); // Adjust encoding if necessary
+        cv::Mat depthMat = cv_ptr->image;
 
-    
-    for (int v = 0; v < V; ++v)
-    {
-        for (int u = 0; u < U; ++u)
-        {
-            convertedDepthImg.at<uint16_t>(v, u)
-                = depth_image_proc::DepthTraits<uint16_t>::fromMeters(cv_depth_ptr->image.at<float>(v, u));
-        }
+        // Handle NaN values through interpolation
+        cv::Mat mask = depthMat != depthMat; // Create a mask of NaN locations
+        depthMat.setTo(0, mask); // Set NaN values to 0 temporarily
+        cv::inpaint(depthMat, mask, depthMat, 5, cv::INPAINT_TELEA); // Interpolate to fill NaN values
+        
+       // for(int i = 0; i < depthMat.rows; ++i) {
+       //     for(int j = 0; j < depthMat.cols; ++j) {
+       //         std::cout << depthMat.at<float>(i, j) << " ";
+       //     }
+       //     std::cout << std::endl;
+       // }
+
+        cv_ptr->image = depthMat;
+        sensor_msgs::Image interpolatedMsg = *(cv_ptr->toImageMsg());
+
+        // Pass the interpolated depth image to the depth estimator
+        depth_estimator_->main(boost::make_shared<sensor_msgs::Image const>(interpolatedMsg));
+    } catch (cv_bridge::Exception& e) {
+        ROS_ERROR("cv_bridge exception: %s", e.what());
+        return;
     }
 
-    cv_depth_ptr->encoding = "16UC1";
-    cv_depth_ptr->image = convertedDepthImg;
-    
-    
-        sensor_msgs::ImagePtr msg16 = cv_bridge::CvImage(msg->header, sensor_msgs::image_encodings::TYPE_16UC1,  cv_depth_ptr->image).toImageMsg();
-
-
- cv::namedWindow("Received Image", cv::WINDOW_NORMAL);
-    
-    cv::imshow("Received Image", cv_depth_ptr->image);
-    cv::waitKey(30);
-  
- /*  
-   cv_bridge::CvImageConstPtr cv_frame32;
-    cv_frame32 = cv_bridge::toCvCopy(msg,sensor_msgs::image_encodings::TYPE_32FC1);         
-  //sensor_msgs::ImagePtr msg16 = cv_bridge::CvImage(std_msgs::Header(), sensor_msgs::image_encodings::TYPE_16UC1, cv_frame32).toImageMsg();
-  cv::Mat converted_img;
-    cv_frame32->image.convertTo(converted_img, CV_16UC1, 65535.0);
-    
-    
-        sensor_msgs::ImagePtr msg16 = cv_bridge::CvImage(msg->header, sensor_msgs::image_encodings::TYPE_16UC1, converted_img).toImageMsg();
-   
-   cv_bridge::CvImageConstPtr cv_ptr;
-  
-   cv_ptr = cv_bridge::toCvCopy(msg16,msg16->encoding);
-   
-  ROS_INFO("Encoding: %s", msg16->encoding.c_str());
-    
-    //cv::Mat modifiedImage = cv_ptr->image.clone();
-      for(int i = 0; i < cv_ptr->image.rows; i++) {
-        for(int j = 0; j < cv_ptr->image.cols; j++) {
-            
-            //cv_ptr->image.at<float>(i, j) = cv_ptr->image.at<float>(i, j) * 16;
-            float value = cv_ptr->image.at<float>(i, j);
-            //cv::Mat modifiedImage = cv_ptr->image.clone();
-             //value=modifiedImage.at<float>(i, j) *= 16;
-           ROS_INFO("Depth value at (%d, %d): %f", i, j, value);
-           
-        }
+    geometry_msgs::PointStamped depth_point;
+    depth_point = depth_estimator_->GetDepthPoint();
+    //ROS_INFO("Depth Point: x: %f, y: %f, z: %f", depth_point.point.x, depth_point.point.y, depth_point.point.z);
+    if (depth_estimator_->istart_) {
+        depth_pub_.publish(depth_point);
     }
-    
-  
-  
-  // Display the received image
-    
-   cv::namedWindow("Received Image", cv::WINDOW_NORMAL);
-    //cv::imshow("Received Image", modifiedImage);
-    //cv::imshow("Received Image", cv_frame32->image);
-    cv::imshow("Received Image", cv_ptr->image);
-    cv::waitKey(30);
-  
-*/  
-  //cv::Mat normalizedImage;
-  //cv::normalize(cv_ptr->image, normalizedImage, 0, 255, cv::NORM_MINMAX, CV_8U);
-  
-     // Display the received image
-    //cv::namedWindow("Received Image", cv::WINDOW_NORMAL);
-    //cv::imshow("Received Image", grayscaleImage);
-    //cv::waitKey(30);
-  
-  
-  depth_estimator_->main(msg16);
-  geometry_msgs::PointStamped depth_point;
-  depth_point = depth_estimator_->GetDepthPoint();
-  //ROS_INFO("Depth Point: x: %f, y: %f, z: %f", depth_point.point.x, depth_point.point.y,depth_point.point.z);
-  if (depth_estimator_->istart_) {
-    depth_pub_.publish(depth_point);
-  }
 
-  cv::Mat depth_visualize = depth_estimator_->GetDepthVisualization();
+    cv::Mat depth_visualize = depth_estimator_->GetDepthVisualization();
 
-  sensor_msgs::ImagePtr depth_vis_msg =
-      cv_bridge::CvImage(std_msgs::Header(), "bgr8", depth_visualize)
-          .toImageMsg();
-  depth_res_pub_.publish(depth_vis_msg);
+    sensor_msgs::ImagePtr depth_vis_msg =
+        cv_bridge::CvImage(std_msgs::Header(), "bgr8", depth_visualize)
+            .toImageMsg();
+    depth_res_pub_.publish(depth_vis_msg);
 }
 
 /**
@@ -345,7 +290,6 @@ inline bool TrackSingleObj::IsNewObj(
     double dx = point_now.point.x - point_last_.point.x;
     double dy = point_now.point.y - point_last_.point.y;
     double dis = fabs(dx) + fabs(dy);
-
 
     if (dis > KNewObjThresDis) { // if two objects are too far
     // TODO: Use KF to estimate new position and judge if it's a new object

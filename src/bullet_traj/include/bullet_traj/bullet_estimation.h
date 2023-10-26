@@ -200,7 +200,7 @@ class BulletEst {
   void Init();
   void EventObserveCallback(const geometry_msgs::PointStamped::ConstPtr &msg);
   void DepthObserveCallback(const geometry_msgs::PointStamped::ConstPtr &msg);
-  void DroneOdomCallback(const nav_msgs::Odometry::ConstPtr &msg);
+  void DroneOdomCallback(const geometry_msgs::PoseStamped::ConstPtr &msg);
   void LoadCameraFile(std::string camera_model_file);
   void PublishBulletTraj();
   void VisualizeBulletTraj();

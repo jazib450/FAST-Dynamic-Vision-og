@@ -14,6 +14,7 @@
 
 /* INCLUDES */
 #include <nav_msgs/Odometry.h>
+#include "geometry_msgs/PoseStamped.h"
 
 #include <eigen3/Eigen/Core>
 #include <eigen3/Eigen/Dense>
@@ -82,7 +83,7 @@ class MotComp {
   /* data */
   vector<sensor_msgs::Imu> IMU_buffer_;
   vector<dvs_msgs::Event> events_buffer_;
-  nav_msgs::Odometry odoms_buffer_;
+  geometry_msgs::PoseStamped odoms_buffer_;
   cv::Mat depth_img_;
 
   // std::vector<Isometry3d> trans_vector;
@@ -146,7 +147,7 @@ class MotComp {
   /* helper functions */
   void LoadIMUs(const sensor_msgs::ImuConstPtr &imu);
   void LoadEvents(const dvs_msgs::EventArray::ConstPtr &emsg);
-  void LoadOdometry(const nav_msgs::Odometry::ConstPtr &odom);
+  void LoadOdometry(const geometry_msgs::PoseStamped::ConstPtr &odom);
   void LoadDepth(const cv::Mat &depth);
   void SetIMUType(const string &s);
   cv::Mat GetTimeImage(void) { return time_img_; }

@@ -90,7 +90,7 @@ class TrackSingleObj {
   /* ROS functions */
   void ReadParameters(ros::NodeHandle &n);
   void ImuCallback(const sensor_msgs::ImuConstPtr &imu);
-  void OdometryCallback(const nav_msgs::Odometry::ConstPtr &odom);
+  void OdometryCallback(const geometry_msgs::PoseStamped::ConstPtr &odom);
   void TriggerCallback(const geometry_msgs::PoseStamped &p);
   void ImageCallback(const sensor_msgs::Image::ConstPtr &imsg);
   void EventsCallback(const dvs_msgs::EventArray::ConstPtr &emsg);

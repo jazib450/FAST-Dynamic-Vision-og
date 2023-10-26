@@ -66,6 +66,8 @@ void ObjDetector::Detect() {
     last_rect_.y += min_obj.y;
     last_rect_.width = min_obj.width;
     last_rect_.height = min_obj.height;
+    
+    GetRect(gray_image_, &last_rect_);
   }
 }
 
@@ -130,6 +132,7 @@ bool ObjDetector::GaussianModelConvergence(const cv::Mat &msrc,
 
   for (int i = 0; i < iterTimes; i++) {
     cv::Moments m = cv::moments(matrix);
+    if (m.m00 == 0) return false;
     cv::Point center_mass(static_cast<int>(m.m10 / m.m00),
                           static_cast<int>(m.m01 / m.m00));
 
@@ -149,7 +152,9 @@ bool ObjDetector::GaussianModelConvergence(const cv::Mat &msrc,
 
     IntTruncate(matrix.cols, &width);
     IntTruncate(matrix.rows, &height);
-
+    
+    //width = std::min(width, static_cast<double>(matrix.cols));
+    //height = std::min(height, static_cast<double>(matrix.rows));
     iter_rect.width = static_cast<int>(width);
     iter_rect.height = static_cast<int>(height);
     iter_rect.x = center_mass.x - iter_rect.width / 2;
@@ -226,7 +231,7 @@ void ObjDetector::Mask(const cv::Mat &src, cv::Rect *roi) {
     //              stats.at<int>(idx, cv::CC_STAT_TOP),
     //              stats.at<int>(idx, cv::CC_STAT_WIDTH),
     //              stats.at<int>(idx, cv::CC_STAT_HEIGHT));
-    roi->x += stats.at<float>(idx, cv::CC_STAT_LEFT);
+    roi->x += stats.at<int>(idx, cv::CC_STAT_LEFT);
     roi->y += stats.at<int>(idx, cv::CC_STAT_TOP);
     roi->width = stats.at<int>(idx, cv::CC_STAT_WIDTH);
     roi->height = stats.at<int>(idx, cv::CC_STAT_HEIGHT);
@@ -292,20 +297,26 @@ void ObjDetector::GetRect(const cv::Mat &src, cv::Rect *O) {
   if (O->x < 0) {
     O->width -= O->x;  // left edge moves right
     O->x = 0;
+            //std::cout << "Adjusted left boundary. New ROI: x=" << O->x << ", y=" << O->y << ",          width=" << O->width << ", height=" << O->height << std::endl;
   }
 
   if (O->x + O->width > src.cols - 1) {
     O->width = src.cols - 1 - O->x;  // right edge truncates
+            //std::cout << "Adjusted right boundary. New ROI: x=" << O->x << ", y=" << O->y << ", width=" << O->width << ", height=" << O->height << std::endl;
   }
 
   if (O->y < 0) {
     O->height -= O->y;
     O->y = 0;
+            //std::cout << "Adjusted top boundary. New ROI: x=" << O->x << ", y=" << O->y << ", width=" << O->width << ", height=" << O->height << std::endl;
   }
 
   if (O->y + O->height > src.rows - 1) {
     O->height = src.rows - 1 - O->y;
+           // std::cout << "Adjusted bottom boundary. New ROI: x=" << O->x << ", y=" << O->y << ", width=" << O->width << ", height=" << O->height << std::endl;
   }
+  if (O->width < 0) O->width = 0;
+  if (O->height < 0) O->height = 0;
 }
 
 /**
@@ -345,7 +356,7 @@ inline void ObjDetector::IntTruncate(const int &ref, double *value) {
  */
 inline void ObjDetector::GetAverage(const cv::Mat m, double *avg, int *num) {
   // int n = *num;
-  double sum;
+  double sum=0.0;
   for (int i = 0; i < m.rows; i++) {
     for (int j = 0; j < m.cols; j++) {
       if (m.at<uchar>(i, j)) {

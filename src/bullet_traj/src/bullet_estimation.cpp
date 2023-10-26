@@ -9,6 +9,7 @@
  *
  */
 #include <bullet_traj/bullet_estimation.h>
+#include <geometry_msgs/PoseStamped.h>
 
 using namespace bullet_estimation;
 
@@ -180,7 +181,9 @@ void BulletEst::DepthObserveCallback(
   if (kIsVisualize == true) {
     geometry_msgs::PointStamped p;
     Eigen::Vector3d p_cam(msg->point.x, msg->point.y, msg->point.z);
+    //std::cout<<p_cam;
     Eigen::Vector3d p_world = T_c2w_ * p_cam;
+    //std::cout<<T_c2w_.matrix();
     p.header = msg->header;
     p.header.frame_id = "/world";
     p.point.x = p_world(0) * 1e-3;  // millimeter -> meter
@@ -212,21 +215,25 @@ void BulletEst::DepthObserveCallback(
  * the world coordinate system
  * @param msg
  */
-void BulletEst::DroneOdomCallback(const nav_msgs::Odometry::ConstPtr &msg) {
+void BulletEst::DroneOdomCallback(const geometry_msgs::PoseStamped::ConstPtr &msg) {
   Eigen::Quaterniond q;
-  q.x() = msg->pose.pose.orientation.x;
-  q.y() = msg->pose.pose.orientation.y;
-  q.z() = msg->pose.pose.orientation.z;
-  q.w() = msg->pose.pose.orientation.w;
+  q.x() = msg->pose.orientation.x;
+  q.y() = msg->pose.orientation.y;
+  q.z() = msg->pose.orientation.z;
+  q.w() = msg->pose.orientation.w;
 
   T_b2w_.setIdentity();
   T_b2w_.rotate(q);
-  T_b2w_.pretranslate(Eigen::Vector3d(msg->pose.pose.position.x,
-                                      msg->pose.pose.position.y,
-                                      msg->pose.pose.position.z));
+  T_b2w_.pretranslate(Eigen::Vector3d(msg->pose.position.x,
+                                      msg->pose.position.y,
+                                      msg->pose.position.z));
 
   T_c2w_ = T_b2w_ * T_c2b_;  // transition matrix camera to world
   // T_c2w_（Homogeneous transform mapping cam frame to world frame）
+  //std::cout<<"T_b2w_"<<T_b2w_.matrix();
+  //std::cout<<"T_c2b_"<<T_c2b_.matrix();
+  
+ 
   T_w2c_ = T_c2w_.inverse();
 
   if (kIsVisualize == true) {

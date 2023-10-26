@@ -51,7 +51,7 @@ void MotComp::LoadIMUs(const sensor_msgs::ImuConstPtr &imu) {
   IMU_buffer_.push_back(*imu);
 }
 
-void MotComp::LoadOdometry(const nav_msgs::Odometry::ConstPtr &odom) {
+void MotComp::LoadOdometry(const geometry_msgs::PoseStamped::ConstPtr &odom) {
   odoms_buffer_ = *odom;
 }
 
@@ -296,9 +296,9 @@ void MotComp::translationalCompensate(cv::Mat *timeImg, cv::Mat *eventCount) {
   for (int i = 0; i < maxTS; i++) {
     trans_body = Eigen::Isometry3d::Identity();
     trans_body.pretranslate(Eigen::Vector3d(
-        odoms_buffer_.twist.twist.linear.x * static_cast<double>(i),
-        odoms_buffer_.twist.twist.linear.y * static_cast<double>(i),
-        odoms_buffer_.twist.twist.linear.z * static_cast<double>(i)));
+        odoms_buffer_.pose.position.x * static_cast<double>(i),
+        odoms_buffer_.pose.position.y * static_cast<double>(i),
+        odoms_buffer_.pose.position.z * static_cast<double>(i)));
     trans_vector[i] = cam2body.inverse() * fc2world.inverse() * trans_body *
                       fc2world * cam2body;
   }
@@ -387,9 +387,9 @@ void MotComp::RotTransCompensate(cv::Mat *timeImg, cv::Mat *eventCount) {
   for (int i = 0; i < 50; i++) {
     trans_body = Eigen::Isometry3d::Identity();
     trans_body.pretranslate(Eigen::Vector3d(
-        -odoms_buffer_.twist.twist.linear.x * static_cast<double>(i),
-        -odoms_buffer_.twist.twist.linear.y * static_cast<double>(i),
-        -odoms_buffer_.twist.twist.linear.z * static_cast<double>(i)));
+        -odoms_buffer_.pose.position.x * static_cast<double>(i),
+        -odoms_buffer_.pose.position.y * static_cast<double>(i),
+        -odoms_buffer_.pose.position.z * static_cast<double>(i)));
     trans_vector[i] = cam2body.inverse() * fc2world.inverse() * trans_body *
                       fc2world * cam2body;
   }

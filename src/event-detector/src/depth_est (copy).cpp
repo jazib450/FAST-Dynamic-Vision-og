@@ -41,29 +41,12 @@ void DepthEst::SetEventDetectionRes(bool is_obj) {
  * @param msg
  */
 void DepthEst::main(const sensor_msgs::ImageConstPtr& msg) {
-  
   cv_bridge::CvImageConstPtr cv_ptr;
   cv_ptr = cv_bridge::toCvCopy(msg, msg->encoding);
-  
-     // Display the received image
-    //cv::namedWindow("Received Image", cv::WINDOW_NORMAL);
-    //cv::imshow("Received Image", cv_ptr->image);
-    //cv::waitKey(30);
-  
-  
-  
 
   /* init depth image */
   cv::Mat depth_gray_u8(msg->height, msg->width, CV_8UC1);
   depth_gray_ = cv::Mat::zeros(cv::Size(msg->height, msg->width), CV_8UC1);
-
-
-
-// Display the received image
-   cv::namedWindow("Received Image", cv::WINDOW_NORMAL);
-    cv::imshow("Received Image", depth_gray_u8);
-    cv::waitKey(30);
-
 
   /* register depth data to an external camera */
   cv::rgbd::registerDepth(k_depth_camera_intrinsic_, k_event_camera_intrinsic_,

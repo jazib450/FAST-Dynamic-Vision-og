@@ -1,8 +1,8 @@
 %YAML:1.0
 model_type: PINHOLE
 camera_name: onborad_cam_davis
-image_width: 640
-image_height: 480
+image_width: 346
+image_height: 260
 distortion_parameters:
    k1: -4.6057485804908826e-01
    k2: 5.1615329117730113e-01
